@@ -1,5 +1,5 @@
 <template>
-<div class="com-container">
+<div class="com-container" @dblclick="revertMap">
   <div class="com-chart" ref="map_ref"></div></div>
 </template>
 
@@ -11,7 +11,8 @@ export default {
   data () {
     return {
       chartInstance: null,
-      allData: null // 从服务器获取的所有数据
+      allData: null, // 从服务器获取的所有数据
+      mapData: {} // 获取的省份数据缓存
     }
   },
   computed: {
@@ -58,8 +59,19 @@ export default {
       this.chartInstance.on('click', async arg => {
         const provinceInfo = getProvinceMapInfo(arg.name)
         // 获取这个省份的地图矢量数据
-        const res = await axios.get('http://localhost:8999' + provinceInfo.path)
-        this.$echarts.registerMap(provinceInfo.key, res.data)
+        // 判断当前所点击的省份的数据是否已在缓存中
+        if (!this.mapData[provinceInfo.key]) {
+          const res = await axios.get('http://localhost:8999' + provinceInfo.path)
+          this.mapData[provinceInfo.key] = res.data
+          this.$echarts.registerMap(provinceInfo.key, res.data)
+        }
+        const changeOption = {
+          geo: {
+            map: provinceInfo.key
+
+          }
+        }
+        this.chartInstance.setOption(changeOption)
       })
     },
     // 获取服务器数据
@@ -117,6 +129,14 @@ export default {
       }
       this.chartInstance.setOption(adapterOptition)
       this.chartInstance.resize()
+    },
+    revertMap () {
+      const revertOption = {
+        geo: {
+          map: 'china'
+        }
+      }
+      this.chartInstance.setOption(revertOption)
     }
   }
 }
