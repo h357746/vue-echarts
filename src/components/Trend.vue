@@ -9,6 +9,8 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
+import { getThemeValue } from '../utils/theme_utils'
 export default {
   neme: 'Trend',
   data () {
@@ -20,7 +22,12 @@ export default {
       titleFontSize: 0
     }
   },
+  created () {
+    // 在组建创建完成后来进行回调函数的注册
+    this.$socket.registerCallBack('trendData', this.getData)
+  },
   computed: {
+    ...mapState(['theme']),
     selectTypes () {
       if (!this.allData) {
         return []
@@ -39,7 +46,8 @@ export default {
     },
     comSytle () {
       return {
-        fontSize: this.titleFontSize + 'px'
+        fontSize: this.titleFontSize + 'px',
+        color: getThemeValue(this.theme).titleColor
       }
     },
     marginSytle () {
@@ -48,19 +56,35 @@ export default {
       }
     }
   },
+  watch: {
+    theme () {
+      this.chartInstance.dispose() // 销毁当前图表
+      this.initChart() // 重新初始化图表
+      this.screenAdapter() // 完成屏幕适配
+      this.updataChart() // 更新数据
+    }
+  },
   mounted () {
     this.initChart() // 调用初始化图表方法
-    this.getData() // 调用获取数据
+    // this.getData() // 调用获取数据
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'trendData',
+      chartName: 'trend',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter) // 事件s监听
     this.screenAdapter()
   },
   destroyed () {
     window.removeEventListener('resize', this.screenAdapter)
+    // 取消回调函数
+    this.$scoket.unRegisterCallBack('trendData')
   },
   methods: {
     // 初始化echarts
     initChart () {
-      this.chartInstance = this.$echarts.init(this.$refs.trend_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.trend_ref, this.theme)
       const initOption = {
         grid: {
           left: '3%',
@@ -89,8 +113,8 @@ export default {
       this.chartInstance.setOption(initOption)
     },
     // 获取服务器数据
-    async getData () {
-      const { data: res } = await this.$http.get('trend')
+    getData (res) {
+      // const { data: res } = await this.$http.get('trend')
       this.allData = res
       this.updataChart()
     },
@@ -180,8 +204,8 @@ export default {
   position: absolute;
   left: 20px;
   top: 20px;
-  z-index: 999;
   color: white;
+  z-index: 2;
   .title-icon{
     margin-left: 10px;
     cursor: pointer;
@@ -189,5 +213,8 @@ export default {
   .select-con{
     background-color: #222733;
   }
+}
+.com-container{
+  position: relative;
 }
 </style>

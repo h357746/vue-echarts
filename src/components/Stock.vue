@@ -5,6 +5,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 export default {
   neme: 'Stock',
   data () {
@@ -16,21 +17,43 @@ export default {
       titleFontSize: 0
     }
   },
+  created () {
+    // 在组建创建完成后来进行回调函数的注册
+    this.$socket.registerCallBack('stockData', this.getData)
+  },
   mounted () {
     this.initChart() // 调用初始化图表方法
-    this.getData() // 调用获取数据
+    // this.getData() // 调用获取数据
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'stockData',
+      chartName: 'stock',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter) // 事件s监听
     this.screenAdapter()
   },
   destroyed () {
     window.removeEventListener('resize', this.screenAdapter)
     clearInterval(this.timerId)
+    this.$scoket.unRegisterCallBack('stockData')
   },
-  computed: {},
+  computed: {
+
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme () {
+      this.chartInstance.dispose() // 销毁当前图表
+      this.initChart() // 重新初始化图表
+      this.screenAdapter() // 完成屏幕适配
+      this.updataChart() // 更新数据
+    }
+  },
   methods: {
     // 初始化echarts
     initChart () {
-      this.chartInstance = this.$echarts.init(this.$refs.stock_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.stock_ref, this.theme)
       const initOption = {
         title: {
           text: '▍库存和销量分析',
@@ -48,8 +71,8 @@ export default {
       })
     },
     // 获取服务器数据
-    async getData () {
-      const { data: res } = await this.$http.get('stock')
+    getData (res) {
+      // const { data: res } = await this.$http.get('stock')
       this.allData = res
       console.log(res)
       this.updataChart()
@@ -120,7 +143,7 @@ export default {
     // 当浏览器大小发生变化调用完成屏幕适配
     screenAdapter () {
       this.titleFontSize = (this.$refs.stock_ref.offsetWidth / 100) * 3.6
-      const innerRadius = this.titleFontSize * 2
+      const innerRadius = this.titleFontSize * 3.2
       const outterRadius = innerRadius * 1.125
       const adapterOptition = {
         title: {
@@ -133,31 +156,31 @@ export default {
             type: 'pie',
             radius: [outterRadius, innerRadius],
             label: {
-              fontSize: this.titleFontSize / 2
+              fontSize: this.titleFontSize
             }
           }, {
             type: 'pie',
             radius: [outterRadius, innerRadius],
             label: {
-              fontSize: this.titleFontSize / 2
+              fontSize: this.titleFontSize
             }
           }, {
             type: 'pie',
             radius: [outterRadius, innerRadius],
             label: {
-              fontSize: this.titleFontSize / 2
+              fontSize: this.titleFontSize
             }
           }, {
             type: 'pie',
             radius: [outterRadius, innerRadius],
             label: {
-              fontSize: this.titleFontSize / 2
+              fontSize: this.titleFontSize
             }
           }, {
             type: 'pie',
             radius: [outterRadius, innerRadius],
             label: {
-              fontSize: this.titleFontSize / 2
+              fontSize: this.titleFontSize
             }
           }
         ]

@@ -4,6 +4,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 export default {
   neme: 'Rank',
   data () {
@@ -16,20 +17,43 @@ export default {
 
     }
   },
+  created () {
+    // 在组建创建完成后来进行回调函数的注册
+    this.$socket.registerCallBack('rankData', this.getData)
+  },
   mounted () {
     this.initChart() // 调用初始化图表方法
-    this.getData() // 调用获取数据
+    // this.getData() // 调用获取数据
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'rankData',
+      chartName: 'rank',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter) // 事件s监听
     this.screenAdapter()
   },
   destroyed () {
     window.removeEventListener('resize', this.screenAdapter)
     clearInterval(this.timerId)
+    this.$scoket.unRegisterCallBack('rankData')
+  },
+  computed: {
+
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme () {
+      this.chartInstance.dispose() // 销毁当前图表
+      this.initChart() // 重新初始化图表
+      this.screenAdapter() // 完成屏幕适配
+      this.updataChart() // 更新数据
+    }
   },
   methods: {
     // 初始化echarts
     initChart () {
-      this.chartInstance = this.$echarts.init(this.$refs.rank_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.rank_ref, this.theme)
       const initOption = {
         title: {
           text: '▍地区销售排行',
@@ -65,8 +89,8 @@ export default {
       })
     },
     // 获取服务器数据
-    async getData () {
-      const { data: res } = await this.$http.get('rank')
+    getData (res) {
+      // const { data: res } = await this.$http.get('rank')
       this.allData = res
       // 从大到小排序
       this.allData.sort((a, b) => {

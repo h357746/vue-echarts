@@ -4,6 +4,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 import axios from 'axios'
 import { getProvinceMapInfo } from '../utils/map_utils'
 export default {
@@ -16,21 +17,40 @@ export default {
     }
   },
   computed: {
-
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme () {
+      this.chartInstance.dispose() // 销毁当前图表
+      this.initChart() // 重新初始化图表
+      this.screenAdapter() // 完成屏幕适配
+      this.updataChart() // 更新数据
+    }
+  },
+  created () {
+    // 在组建创建完成后来进行回调函数的注册
+    this.$socket.registerCallBack('mapData', this.getData)
   },
   mounted () {
     this.initChart() // 调用初始化图表方法
-    this.getData() // 调用获取数据
+    // this.getData() // 调用获取数据
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'mapData',
+      chartName: 'map',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter) // 事件s监听
     this.screenAdapter()
   },
   destroyed () {
     window.removeEventListener('resize', this.screenAdapter)
+    this.$scoket.unRegisterCallBack('mapData')
   },
   methods: {
     // 初始化echarts
     async initChart () {
-      this.chartInstance = this.$echarts.init(this.$refs.map_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.map_ref, this.theme)
       const res = await axios.get('http://localhost:8999/static/map/china.json')
       this.$echarts.registerMap('china', res.data)
       const initOption = {
@@ -75,8 +95,8 @@ export default {
       })
     },
     // 获取服务器数据
-    async getData () {
-      const { data: res } = await this.$http.get('map')
+    getData (res) {
+      // const { data: res } = await this.$http.get('map')
       this.allData = res
       this.updataChart()
     },

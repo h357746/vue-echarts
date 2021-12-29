@@ -3,6 +3,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 export default {
   neme: 'Seller',
   data () {
@@ -14,19 +15,41 @@ export default {
       timerId: null
     }
   },
+  computed: {
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme () {
+      this.chartInstance.dispose() // 销毁当前图表
+      this.initChart() // 重新初始化图表
+      this.screenAdapter() // 完成屏幕适配
+      this.updataChart() // 更新数据
+    }
+  },
+  created () {
+    // 在组建创建完成后来进行回调函数的注册
+    this.$socket.registerCallBack('sellerData', this.getData)
+  },
   mounted () {
     this.initChart()
-    this.getData()
+    // this.getData()
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'sellerData',
+      chartName: 'seller',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter)
     this.screenAdapter()
   },
   destroyed () {
     clearInterval(this.timerId)
     window.removeEventListener('resize', this.screenAdapter)
+    this.$scoket.unRegisterCallBack('sellerData')
   },
   methods: {
     initChart () {
-      this.chartInstance = this.$echarts.init(this.$refs.seller_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.seller_ref, this.theme)
       const initOption = {
         title: {
           text: '▍商家销售统计',
@@ -88,8 +111,8 @@ export default {
         this.startInterval()
       })
     },
-    async getData () {
-      const { data: res } = await this.$http.get('seller')
+    getData (res) {
+      // const { data: res } = await this.$http.get('seller')
       this.allData = res
       this.allData.sort((a, b) => {
         return a.value - b.value

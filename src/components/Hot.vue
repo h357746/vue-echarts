@@ -8,6 +8,8 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
+import { getThemeValue } from '../utils/theme_utils'
 export default {
   neme: 'Hot',
   data () {
@@ -18,14 +20,25 @@ export default {
       titleFontSize: 0
     }
   },
+  created () {
+    // 在组建创建完成后来进行回调函数的注册
+    this.$socket.registerCallBack('hotData', this.getData)
+  },
   mounted () {
     this.initChart() // 调用初始化图表方法
-    this.getData() // 调用获取数据
+    // this.getData() // 调用获取数据
+    this.$socket.send({
+      action: 'getData',
+      socketType: 'hotData',
+      chartName: 'hotproduct',
+      value: ''
+    })
     window.addEventListener('resize', this.screenAdapter) // 事件s监听
     this.screenAdapter()
   },
   destroyed () {
     window.removeEventListener('resize', this.screenAdapter)
+    this.$scoket.unRegisterCallBack('hotData')
   },
   computed: {
     title () {
@@ -34,13 +47,25 @@ export default {
       } else { return this.allData[this.currentIndex].name }
     },
     comStyle () {
-      return { fontSize: this.titleFontSize + 'px' }
+      return {
+        fontSize: this.titleFontSize + 'px',
+        color: getThemeValue(this.theme).titleColor
+      }
+    },
+    ...mapState(['theme'])
+  },
+  watch: {
+    theme () {
+      this.chartInstance.dispose() // 销毁当前图表
+      this.initChart() // 重新初始化图表
+      this.screenAdapter() // 完成屏幕适配
+      this.updataChart() // 更新数据
     }
   },
   methods: {
     // 初始化echarts
     initChart () {
-      this.chartInstance = this.$echarts.init(this.$refs.hot_ref, 'chalk')
+      this.chartInstance = this.$echarts.init(this.$refs.hot_ref, this.theme)
       const initOption = {
         title: {
           text: '▍热销商品销售金额占比统计',
@@ -85,8 +110,8 @@ export default {
       this.chartInstance.setOption(initOption)
     },
     // 获取服务器数据
-    async getData () {
-      const { data: res } = await this.$http.get('hotproduct')
+    getData (res) {
+      // const { data: res } = await this.$http.get('hotproduct')
       this.allData = res
       this.updataChart()
     },
@@ -132,12 +157,12 @@ export default {
         series: [
           {
             radius: this.titleFontSize * 4.5,
-            center: ['50%', '50%']
+            center: ['50%', '60%']
           }
         ],
         legend: {
-          itemWidth: this.titleFontSize / 2,
-          itemHeight: this.titleFontSize / 2,
+          itemWidth: this.titleFontSize,
+          itemHeight: this.titleFontSize,
           itemGap: this.titleFontSize / 2,
           textStyle: {
             fontSize: this.titleFontSize / 2
@@ -167,7 +192,7 @@ export default {
 <style lang="less" scoped>
 .arr-left {
   position: absolute;
-  top: 50%;
+  top: 60%;
   left: 10%;
   transform: translate(-50%);
   cursor: pointer;
@@ -175,7 +200,7 @@ export default {
 }
 .arr-right {
   position: absolute;
-  top: 50%;
+  top: 60%;
   right: 10%;
   transform: translate(-50%);
   cursor: pointer;
